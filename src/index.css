@@ -2,57 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Survey Voice Recording App Design System */
+/* Food Ordering Voice Assistant Design System */
 
 @layer base {
   :root {
-    /* Core colors - Professional blue theme */
-    --background: 0 0% 100%;
-    --foreground: 216 19% 16%;
+    /* Core colors - Light green theme */
+    --background: 120 20% 97%;
+    --foreground: 160 10% 15%;
     
     --card: 0 0% 100%;
-    --card-foreground: 216 19% 16%;
+    --card-foreground: 160 10% 15%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 216 19% 16%;
+    --popover-foreground: 160 10% 15%;
     
-    /* Primary: Deep professional blue */
-    --primary: 217 91% 60%;
+    /* Primary: Fresh green */
+    --primary: 140 65% 45%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 217 91% 70%;
+    --primary-glow: 140 65% 55%;
     
-    /* Secondary: Warm neutral */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 216 19% 16%;
+    /* Secondary: Soft neutral */
+    --secondary: 120 15% 94%;
+    --secondary-foreground: 160 10% 25%;
     
-    /* Muted: Light gray */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    /* Muted: Light green-gray */
+    --muted: 120 15% 94%;
+    --muted-foreground: 120 8% 50%;
     
-    /* Accent: Warm orange for highlights */
-    --accent: 25 95% 53%;
+    /* Accent: Vibrant orange */
+    --accent: 25 95% 55%;
     --accent-foreground: 0 0% 100%;
     
-    /* Success: Clean green */
-    --success: 142 76% 36%;
+    /* Success: Bright green */
+    --success: 140 65% 45%;
     --success-foreground: 0 0% 100%;
     
-    /* Warning: Amber */
-    --warning: 43 96% 56%;
-    --warning-foreground: 0 0% 100%;
+    /* Warning: Golden yellow */
+    --warning: 45 95% 55%;
+    --warning-foreground: 160 10% 15%;
     
     /* Recording: Vibrant red */
-    --recording: 0 84% 60%;
+    --recording: 0 85% 60%;
     --recording-foreground: 0 0% 100%;
     
     /* Destructive */
-    --destructive: 0 84% 60%;
+    --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
     
     /* Borders and inputs */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 120 15% 88%;
+    --input: 120 15% 88%;
+    --ring: 140 65% 45%;
     
     /* Border radius */
     --radius: 0.75rem;

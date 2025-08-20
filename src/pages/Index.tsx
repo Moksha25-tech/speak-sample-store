@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { Mic } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { ControlsBar } from '@/components/ControlsBar';
 import { ItemRow } from '@/components/ItemRow';
@@ -139,7 +141,37 @@ const Index = () => {
           apiStatus={apiStatus}
         />
 
-        {/* Items List */}
+        {/* Listening Status Banner */}
+        <div className="mt-6 p-4 bg-secondary rounded-2xl border-2 border-muted">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-warning animate-pulse" />
+              <span className="text-secondary-foreground font-medium">
+                Passively listening...
+              </span>
+            </div>
+            <Button 
+              variant="default" 
+              size="lg" 
+              className="rounded-2xl font-semibold px-6 py-3"
+              onClick={() => {
+                if (activeItemIndex !== null) {
+                  // Focus on the active item's record button
+                  const activeElement = document.querySelector(`[data-item-index="${activeItemIndex}"] button`);
+                  if (activeElement) (activeElement as HTMLElement).click();
+                }
+              }}
+            >
+              <Mic className="h-5 w-5 mr-2" />
+              Start Recording
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Passive listening active. Say "start recording" to begin ordering.
+          </p>
+        </div>
+
+        {/* Items Grid */}
         <div className="mt-8">
           {filteredAndSortedItems.length === 0 ? (
             <div className="text-center py-12">
@@ -148,15 +180,16 @@ const Index = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredAndSortedItems.map((item, index) => (
-                <ItemRow
-                  key={`${item}-${index}`}
-                  itemName={item}
-                  isActive={activeItemIndex === index}
-                  onClick={() => setActiveItemIndex(index)}
-                  sessionId={sessionId}
-                />
+                <div key={`${item}-${index}`} data-item-index={index}>
+                  <ItemRow
+                    itemName={item}
+                    isActive={activeItemIndex === index}
+                    onClick={() => setActiveItemIndex(index)}
+                    sessionId={sessionId}
+                  />
+                </div>
               ))}
             </div>
           )}

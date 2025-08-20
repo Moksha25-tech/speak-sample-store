@@ -38,25 +38,26 @@ export const Header: React.FC<HeaderProps> = ({ micPermission }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-6">
+    <header className="sticky top-0 z-50 w-full bg-background border-b">
+      <div className="container flex h-20 items-center justify-between px-6">
         <div className="flex flex-col">
-          <h1 className="text-xl font-bold text-foreground">
-            Survey — Voice Samples
+          <h1 className="text-2xl font-bold text-foreground">
+            Voice Ordering Assistant
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Help us improve pronunciation models by recording short clips for the items below.
-          </p>
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Mic Permission Indicator */}
-          <div className={`flex items-center gap-2 ${micStatus.color}`}>
-            <MicIcon className="h-4 w-4" />
-            <span className="text-sm font-medium hidden sm:inline">
-              {micStatus.text}
-            </span>
-          </div>
+          {/* Cart Icon */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 px-4 gap-2 rounded-2xl border-2"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h10a1 1 0 001-1v-6M9 19h6" />
+            </svg>
+            Cart
+          </Button>
 
           {/* Settings Dialog */}
           <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>

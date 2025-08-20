@@ -1,9 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Mic, Square, Upload, RotateCcw, Check } from 'lucide-react';
+import { Play, Pause, Mic, Square, Upload, RotateCcw, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRecorder, RecordingState } from '@/hooks/useRecorder';
 import { api, UploadMetadata } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+
+// Food emoji mapping
+const foodEmojis: { [key: string]: string } = {
+  'Idli': '🍚', 'Vada': '🍘', 'Pongal': '🍲', 'Dosa': '🥞', 'Masala Dosa': '🥞',
+  'Paneer Tikka': '🧀', 'Butter Chicken': '🍛', 'Veg Biryani': '🍚', 'Samosa': '🥟',
+  'Chole Bhature': '🫘', 'Chicken Tikka': '🍖', 'Dal Tadka': '🫛', 'Gulab Jamun': '🍡',
+  'Mango Lassi': '🥭', 'Naan': '🫓', 'Tandoori Roti': '🫓', 'Rajma Masala': '🫘',
+  'Aloo Gobi': '🥔', 'Palak Paneer': '🥬', 'Curd Rice': '🍚', 'Kerala Fish Curry': '🐟'
+};
+
+const getRandomEmoji = (itemName: string): string => {
+  if (foodEmojis[itemName]) return foodEmojis[itemName];
+  const defaultEmojis = ['🍽️', '🥘', '🍛', '🍜', '🍲', '🥗', '🍕', '🍔', '🌮', '🥙'];
+  return defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
+};
 
 interface ItemRowProps {
   itemName: string;
@@ -151,9 +166,9 @@ export const ItemRow: React.FC<ItemRowProps> = ({
   return (
     <div 
       className={`
-        group rounded-xl border bg-card p-6 transition-all duration-200 cursor-pointer
-        ${isActive ? 'ring-2 ring-primary shadow-glow bg-primary/5' : 'hover:shadow-md hover:bg-accent/50'}
-        ${state === 'recording' ? 'recording-pulse' : ''}
+        p-6 rounded-2xl border-2 bg-card transition-all duration-200 hover:shadow-lg cursor-pointer relative overflow-hidden group
+        ${isActive ? 'ring-2 ring-primary border-primary shadow-lg' : 'border-border hover:border-primary/30'}
+        ${state === 'recording' ? 'recording-pulse border-recording' : ''}
       `}
       onClick={onClick}
       role="button"
@@ -165,129 +180,148 @@ export const ItemRow: React.FC<ItemRowProps> = ({
         }
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`status-dot ${getStatusClass()}`} />
-          <div>
-            <h3 className="font-semibold text-card-foreground">
-              {itemName}
-            </h3>
-            {uploadedFilename && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Uploaded • {uploadedFilename}
-              </p>
-            )}
-            {state === 'ready' && durationMs > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Duration: {formatDuration(durationMs)}
-              </p>
-            )}
-            {error && (
-              <p className="text-xs text-destructive mt-1">
-                {error}
-              </p>
-            )}
-          </div>
+      <div className="flex flex-col items-center text-center space-y-4">
+        {/* Food Emoji */}
+        <div className="text-5xl group-hover:scale-110 transition-transform duration-200">
+          {getRandomEmoji(itemName)}
+        </div>
+        
+        {/* Item Name */}
+        <div>
+          <h3 className="font-bold text-lg text-card-foreground">{itemName}</h3>
+          {uploadedFilename && (
+            <p className="text-sm text-success font-medium mt-1">
+              ✓ Uploaded
+            </p>
+          )}
+          {state === 'ready' && durationMs > 0 && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {formatDuration(durationMs)} recorded
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mt-1">
+              {error}
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="w-full space-y-2">
           {/* Record/Stop Button */}
           {(state === 'idle' || state === 'recording' || state === 'error') && (
             <Button
-              variant={getButtonVariant('record')}
-              size="sm"
+              variant={state === 'recording' ? 'destructive' : 'default'}
+              size="lg"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRecord();
               }}
-              className="focus-ring"
+              className="w-full focus-ring rounded-2xl font-semibold text-lg py-3"
               aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
             >
               {state === 'recording' ? (
                 <>
-                  <Square className="h-4 w-4 mr-2" />
-                  Stop
+                  <Square className="h-5 w-5 mr-2" />
+                  Stop Recording
                 </>
               ) : (
                 <>
-                  <Mic className="h-4 w-4 mr-2" />
-                  Record
+                  <Mic className="h-5 w-5 mr-2" />
+                  {state === 'error' ? 'Retry Recording' : 'Start Recording'}
                 </>
               )}
             </Button>
           )}
 
-          {/* Play Button */}
+          {/* Play and Retake buttons */}
           {(state === 'ready' || state === 'uploaded') && blob && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePlay();
-              }}
-              className="focus-ring"
-              aria-label={isPlaying ? 'Pause playback' : 'Play recording'}
-            >
-              {isPlaying ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              <span className="ml-2 hidden sm:inline">Play</span>
-            </Button>
-          )}
-
-          {/* Retake Button */}
-          {(state === 'ready' || state === 'uploaded' || state === 'error') && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRetake();
-              }}
-              className="focus-ring"
-              aria-label="Retake recording"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span className="ml-2 hidden sm:inline">Retake</span>
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePlay();
+                }}
+                className="flex-1 focus-ring rounded-xl"
+                aria-label={isPlaying ? 'Pause playback' : 'Play recording'}
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 mr-1" />
+                ) : (
+                  <Play className="h-4 w-4 mr-1" />
+                )}
+                Play
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRetake();
+                }}
+                className="flex-1 focus-ring rounded-xl"
+                aria-label="Retake recording"
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Retake
+              </Button>
+            </div>
           )}
 
           {/* Upload Button */}
           {state === 'ready' && (
             <Button
               variant="default"
-              size="sm"
+              size="lg"
               onClick={(e) => {
                 e.stopPropagation();
                 handleUpload();
               }}
-              className="focus-ring"
+              className="w-full focus-ring rounded-2xl font-semibold text-lg py-3"
               aria-label="Upload recording"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Upload className="h-5 w-5 mr-2" />
+              Upload Recording
             </Button>
           )}
 
-          {/* Uploaded Indicator */}
-          {state === 'uploaded' && (
-            <div className="flex items-center gap-2 text-success">
-              <Check className="h-4 w-4" />
-              <span className="text-sm font-medium hidden sm:inline">Uploaded</span>
-            </div>
+          {/* Uploading State */}
+          {state === 'uploading' && (
+            <Button
+              variant="default"
+              size="lg"
+              disabled
+              className="w-full rounded-2xl font-semibold text-lg py-3"
+            >
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              Uploading...
+            </Button>
           )}
 
-          {/* Uploading Indicator */}
-          {state === 'uploading' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-medium hidden sm:inline">Uploading...</span>
-            </div>
+          {/* Uploaded State */}
+          {state === 'uploaded' && (
+            <Button
+              variant="outline"
+              size="lg"
+              disabled
+              className="w-full rounded-2xl font-semibold text-lg py-3 text-success border-success"
+            >
+              <Check className="h-5 w-5 mr-2" />
+              Successfully Uploaded
+            </Button>
           )}
         </div>
+        
+        {/* Status Indicator */}
+        <div className={`absolute top-3 right-3 w-3 h-3 rounded-full ${
+          state === 'idle' ? 'bg-muted-foreground' :
+          state === 'recording' ? 'bg-recording animate-pulse' :
+          state === 'ready' ? 'bg-warning' :
+          state === 'uploaded' ? 'bg-success' :
+          'bg-destructive'
+        }`} />
       </div>
     </div>
   );
