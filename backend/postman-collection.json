@@ -1,0 +1,171 @@
+{
+  "info": {
+    "name": "Survey Voice Recording API",
+    "description": "Complete API collection for the Survey voice recording application. Includes endpoints for uploading, listing, downloading, and deleting voice recordings.",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Check API health status and get basic server information including uptime and recordings count."
+      },
+      "response": []
+    },
+    {
+      "name": "Upload Recording",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Audio file in webm format (max 10MB, max 30 seconds)"
+            },
+            {
+              "key": "meta",
+              "value": "{\n  \"itemName\": \"Idli\",\n  \"timestamp\": \"2025-08-20T10:30:00.000Z\",\n  \"durationMs\": 2500,\n  \"locale\": \"en-IN\",\n  \"sessionId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"deviceInfo\": {\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"\n  },\n  \"appVersion\": \"survey-1.0.0\"\n}",
+              "type": "text",
+              "description": "JSON metadata about the recording"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/upload-recording",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "upload-recording"]
+        },
+        "description": "Upload a voice recording with metadata. File must be audio/webm format, max 10MB, max 30 seconds duration."
+      },
+      "response": []
+    },
+    {
+      "name": "List All Recordings",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/recordings",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "recordings"]
+        },
+        "description": "Get a list of all recordings with basic metadata (filename, size, creation date, item name)."
+      },
+      "response": []
+    },
+    {
+      "name": "List Recordings by Item",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/recordings?item=idli",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "recordings"],
+          "query": [
+            {
+              "key": "item",
+              "value": "idli",
+              "description": "Filter recordings by item name (case insensitive)"
+            }
+          ]
+        },
+        "description": "Get recordings filtered by item name. The filter is case-insensitive and supports partial matches."
+      },
+      "response": []
+    },
+    {
+      "name": "List Recordings by Date",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/recordings?date=2025-08-20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "recordings"],
+          "query": [
+            {
+              "key": "date",
+              "value": "2025-08-20",
+              "description": "Filter recordings by creation date (YYYY-MM-DD format)"
+            }
+          ]
+        },
+        "description": "Get recordings filtered by creation date. Date should be in YYYY-MM-DD format."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Recording Logs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/recording-logs?date=2025-08-20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "recording-logs"],
+          "query": [
+            {
+              "key": "date",
+              "value": "2025-08-20",
+              "description": "Date in YYYY-MM-DD format (defaults to today)"
+            }
+          ]
+        },
+        "description": "Get detailed logs for recordings uploaded on a specific date. Returns full metadata including session info, device info, and upload details."
+      },
+      "response": []
+    },
+    {
+      "name": "Download Recording",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/download/survey_idli_2025-08-20T10-30-00-000Z_abc12345.webm",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "download", "survey_idli_2025-08-20T10-30-00-000Z_abc12345.webm"]
+        },
+        "description": "Download a specific recording file. Replace the filename with an actual filename from the recordings list."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Recording",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/recordings/survey_idli_2025-08-20T10-30-00-000Z_abc12345.webm",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "recordings", "survey_idli_2025-08-20T10-30-00-000Z_abc12345.webm"]
+        },
+        "description": "Delete a specific recording file and remove it from logs. Replace the filename with an actual filename from the recordings list."
+      },
+      "response": []
+    }
+  ]
+}
