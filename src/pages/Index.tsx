@@ -1,24 +1,51 @@
-import { useState, useEffect, useMemo } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
-import { ControlsBar } from '@/components/ControlsBar';
 import { ItemRow } from '@/components/ItemRow';
 import itemsData from '@/data/items.json';
-import { api } from '@/lib/api';
+import { useRecorder } from '@/hooks/useRecorder';
 
 type MicPermission = 'granted' | 'denied' | 'prompt' | 'checking';
-type ApiStatus = 'online' | 'offline' | 'checking';
 
 const Index = () => {
   const [micPermission, setMicPermission] = useState<MicPermission>('checking');
-  const [apiStatus, setApiStatus] = useState<ApiStatus>('checking');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
-  const [uploadedCount, setUploadedCount] = useState(0);
-  const [sessionId] = useState(() => uuidv4());
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
+  
+  const { state: recordingState, startRecording, stopRecording, resetRecording } = useRecorder();
+
+  // Format timer display
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Recording handlers
+  const handleStartRecording = async () => {
+    const handle = await startRecording();
+    if (handle) {
+      // Start timer
+      let duration = 0;
+      timerRef.current = setInterval(() => {
+        duration++;
+        setRecordingDuration(duration);
+      }, 1000);
+    }
+  };
+
+  const handleStopRecording = () => {
+    stopRecording();
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setRecordingDuration(0);
+  };
 
   // Check microphone permission on mount
   useEffect(() => {
@@ -46,45 +73,32 @@ const Index = () => {
     checkMicPermission();
   }, []);
 
-  // Check API health on mount and periodically
+  // Voice command recognition
   useEffect(() => {
-    const checkApiHealth = async () => {
-      try {
-        await api.health();
-        setApiStatus('online');
-      } catch (error) {
-        console.warn('API health check failed:', error);
-        setApiStatus('offline');
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.lang = 'en-US';
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.toLowerCase().trim();
+        
+        if (command.includes('start recording') && recordingState === 'idle') {
+          handleStartRecording();
+        }
+      };
+      
+      recognitionRef.current.start();
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
     };
-
-    checkApiHealth();
-    
-    // Check every 30 seconds
-    const interval = setInterval(checkApiHealth, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Get uploaded count from localStorage (simple session tracking)
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `survey-uploaded-${today}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      setUploadedCount(parseInt(stored, 10));
-    }
-
-    // Listen for upload events to update count
-    const handleUpload = () => {
-      const newCount = uploadedCount + 1;
-      setUploadedCount(newCount);
-      localStorage.setItem(key, newCount.toString());
-    };
-
-    // This is a simple way to track uploads - in a real app you'd use a proper state management solution
-    window.addEventListener('survey-upload-success', handleUpload);
-    return () => window.removeEventListener('survey-upload-success', handleUpload);
-  }, [uploadedCount]);
+  }, [recordingState]);
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
@@ -111,64 +125,86 @@ const Index = () => {
       switch (e.key) {
         case ' ': // Space to toggle record/stop
           e.preventDefault();
-          if (activeItemIndex !== null) {
-            // This would trigger the record action on the active item
-            // The actual implementation would need to communicate with the ItemRow component
+          if (recordingState === 'idle') {
+            handleStartRecording();
+          } else if (recordingState === 'recording') {
+            handleStopRecording();
           }
-          break;
-        case 'Escape': // Escape to clear active item
-          e.preventDefault();
-          setActiveItemIndex(null);
           break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeItemIndex]);
+  }, [recordingState]);
 
   return (
     <div className="min-h-screen bg-background">
       <Header micPermission={micPermission} />
       
       <main className="container px-6 py-8">
-        <ControlsBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortOrder={sortOrder}
-          onSortChange={setSortOrder}
-          uploadedCount={uploadedCount}
-          apiStatus={apiStatus}
-        />
+        {/* Search Controls */}
+        <div className="mb-6 flex gap-4">
+          <input
+            type="text"
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-4 py-2 border border-muted rounded-xl bg-background"
+          />
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="px-4 py-2 border border-muted rounded-xl bg-background"
+          >
+            <option value="asc">A → Z</option>
+            <option value="desc">Z → A</option>
+          </select>
+        </div>
 
-        {/* Listening Status Banner */}
-        <div className="mt-6 p-4 bg-secondary rounded-2xl border-2 border-muted">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-warning animate-pulse" />
-              <span className="text-secondary-foreground font-medium">
-                Passively listening...
-              </span>
-            </div>
-            <Button 
-              variant="default" 
-              size="lg" 
-              className="rounded-2xl font-semibold px-6 py-3"
-              onClick={() => {
-                if (activeItemIndex !== null) {
-                  // Focus on the active item's record button
-                  const activeElement = document.querySelector(`[data-item-index="${activeItemIndex}"] button`);
-                  if (activeElement) (activeElement as HTMLElement).click();
-                }
-              }}
-            >
-              <Mic className="h-5 w-5 mr-2" />
-              Start Recording
-            </Button>
+        {/* Global Recording Controls */}
+        <div className="mt-6 p-6 bg-secondary rounded-2xl border-2 border-muted">
+          <div className="flex items-center justify-center">
+            {recordingState === 'idle' ? (
+              <Button 
+                variant="default" 
+                size="lg" 
+                className="rounded-2xl font-semibold px-8 py-4"
+                onClick={handleStartRecording}
+              >
+                <Mic className="h-5 w-5 mr-2" />
+                Start Recording
+              </Button>
+            ) : recordingState === 'recording' ? (
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-500 font-mono text-lg font-bold">
+                    {formatTimer(recordingDuration)}
+                  </span>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="lg" 
+                  className="rounded-2xl font-semibold px-8 py-4"
+                  onClick={handleStopRecording}
+                >
+                  Stop Recording
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-green-600 font-semibold mb-2">Recording saved!</p>
+                <Button 
+                  variant="outline" 
+                  onClick={resetRecording}
+                  className="rounded-2xl"
+                >
+                  Record Again
+                </Button>
+              </div>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Passive listening active. Say "start recording" to begin ordering.
-          </p>
         </div>
 
         {/* Items Grid */}
@@ -180,15 +216,10 @@ const Index = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="space-y-2">
               {filteredAndSortedItems.map((item, index) => (
-                <div key={`${item}-${index}`} data-item-index={index}>
-                  <ItemRow
-                    itemName={item}
-                    isActive={activeItemIndex === index}
-                    onClick={() => setActiveItemIndex(index)}
-                    sessionId={sessionId}
-                  />
+                <div key={`${item}-${index}`} className="p-4 bg-card rounded-xl border border-muted hover:border-primary/20 transition-colors">
+                  <span className="text-card-foreground font-medium">{item}</span>
                 </div>
               ))}
             </div>
@@ -197,19 +228,7 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t text-center text-sm text-muted-foreground">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <span>Build: survey-1.0.0</span>
-              <span className="text-xs opacity-50">•</span>
-              <span>Session: {sessionId.slice(0, 8)}</span>
-            </div>
-            <div className={`flex items-center gap-2 ${
-              apiStatus === 'online' ? 'text-success' : apiStatus === 'offline' ? 'text-destructive' : 'text-muted-foreground'
-            }`}>
-              <div className="w-2 h-2 rounded-full bg-current" />
-              <span>API: {apiStatus}</span>
-            </div>
-          </div>
+          <span>Build: survey-1.0.0</span>
         </footer>
       </main>
     </div>

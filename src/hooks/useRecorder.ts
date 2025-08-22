@@ -78,6 +78,17 @@ export const useRecorder = (): UseRecorderReturn => {
         
         setBlob(recordingBlob);
         setDurationMs(duration);
+        
+        // Save file locally
+        const url = URL.createObjectURL(recordingBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
         setState('ready');
         
         // Stop all tracks to release microphone
