@@ -17,6 +17,7 @@ export interface UseRecorderReturn {
   stopRecording: () => void;
   resetRecording: () => void;
   setState: (state: RecordingState) => void;
+  saveRecording: (transcript?: string) => Promise<void>;
 }
 
 const MAX_DURATION_MS = 30 * 1000; // 30 seconds
@@ -78,17 +79,6 @@ export const useRecorder = (): UseRecorderReturn => {
         
         setBlob(recordingBlob);
         setDurationMs(duration);
-        
-        // Save file locally
-        const url = URL.createObjectURL(recordingBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
         setState('ready');
         
         // Stop all tracks to release microphone
@@ -158,6 +148,80 @@ export const useRecorder = (): UseRecorderReturn => {
     setState('idle');
   }, [cleanup]);
 
+  const generateTranscript = useCallback((audioBlob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        resolve('Speech recognition not supported');
+        return;
+      }
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = true;
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      let transcript = '';
+      
+      recognition.onresult = (event: any) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript + ' ';
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        resolve(transcript.trim() || 'No speech detected');
+      };
+
+      recognition.onerror = () => {
+        resolve('Speech recognition error');
+      };
+
+      // For now, return a placeholder since we can't process the blob directly
+      // In a real implementation, you'd need to play the audio and capture it
+      resolve('Audio transcript not available (requires audio playback for processing)');
+    });
+  }, []);
+
+  const saveRecording = useCallback(async (transcript?: string) => {
+    if (!blob) {
+      setError('No recording to save');
+      return;
+    }
+
+    try {
+      setState('uploading');
+      
+      // Generate transcript if not provided
+      const finalTranscript = transcript || await generateTranscript(blob);
+      
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+      formData.append('transcript', finalTranscript);
+
+      const response = await fetch('/api/save-recording', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Recording saved:', result);
+      setState('uploaded');
+      
+    } catch (err) {
+      console.error('Failed to save recording:', err);
+      setError('Failed to save recording to server');
+      setState('error');
+    }
+  }, [blob, generateTranscript]);
+
   return {
     state,
     blob,
@@ -166,6 +230,7 @@ export const useRecorder = (): UseRecorderReturn => {
     startRecording,
     stopRecording,
     resetRecording,
-    setState
+    setState,
+    saveRecording
   };
 };

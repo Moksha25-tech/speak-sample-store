@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Mic } from 'lucide-react';
+import { Mic, FileText, Clock, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { ItemRow } from '@/components/ItemRow';
@@ -8,15 +8,23 @@ import { useRecorder } from '@/hooks/useRecorder';
 
 type MicPermission = 'granted' | 'denied' | 'prompt' | 'checking';
 
+interface RecordingLog {
+  audioFile: string;
+  transcriptFile: string;
+  timestamp: string;
+  storagePath: string;
+}
+
 const Index = () => {
   const [micPermission, setMicPermission] = useState<MicPermission>('checking');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [logs, setLogs] = useState<RecordingLog[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
   
-  const { state: recordingState, startRecording, stopRecording, resetRecording } = useRecorder();
+  const { state: recordingState, startRecording, stopRecording, resetRecording, saveRecording } = useRecorder();
 
   // Format timer display
   const formatTimer = (seconds: number) => {
@@ -38,16 +46,34 @@ const Index = () => {
     }
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     stopRecording();
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     setRecordingDuration(0);
+    
+    // Save recording to server
+    await saveRecording();
+    
+    // Refresh logs after saving
+    await fetchLogs();
   };
 
-  // Check microphone permission on mount
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('/api/recording-logs');
+      if (response.ok) {
+        const logsData = await response.json();
+        setLogs(logsData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+    }
+  };
+
+  // Check microphone permission and fetch logs on mount
   useEffect(() => {
     const checkMicPermission = async () => {
       try {
@@ -71,6 +97,7 @@ const Index = () => {
     };
 
     checkMicPermission();
+    fetchLogs();
   }, []);
 
   // Voice command recognition
@@ -192,9 +219,24 @@ const Index = () => {
                   Stop Recording
                 </Button>
               </div>
+            ) : recordingState === 'uploading' ? (
+              <div className="text-center">
+                <p className="text-blue-600 font-semibold mb-2">Saving recording...</p>
+              </div>
+            ) : recordingState === 'uploaded' ? (
+              <div className="text-center">
+                <p className="text-green-600 font-semibold mb-2">Recording saved to server!</p>
+                <Button 
+                  variant="outline" 
+                  onClick={resetRecording}
+                  className="rounded-2xl"
+                >
+                  Record Again
+                </Button>
+              </div>
             ) : (
               <div className="text-center">
-                <p className="text-green-600 font-semibold mb-2">Recording saved!</p>
+                <p className="text-green-600 font-semibold mb-2">Recording ready!</p>
                 <Button 
                   variant="outline" 
                   onClick={resetRecording}
@@ -206,6 +248,36 @@ const Index = () => {
             )}
           </div>
         </div>
+
+        {/* Recording Logs */}
+        {logs.length > 0 && (
+          <div className="mt-8 p-6 bg-secondary rounded-2xl border-2 border-muted">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Recording Logs
+            </h2>
+            <div className="space-y-3">
+              {logs.map((log, index) => (
+                <div key={index} className="p-4 bg-background rounded-xl border border-muted">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{log.audioFile}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{new Date(log.timestamp.replace(/-/g, ':')).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">{log.storagePath}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Items Grid */}
         <div className="mt-8">

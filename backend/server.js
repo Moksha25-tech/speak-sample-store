@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 import recordingsRouter from './routes/recordings.js';
+import saveRecordingRouter from './routes/save-recording.js';
 import { logger } from './utils/logger.js';
 import { ensureDirs } from './utils/ensureDirs.js';
 
@@ -95,6 +96,7 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api', recordingsRouter);
+app.use('/api', saveRecordingRouter);
 
 // 404 handler
 app.use('*', (req, res) => {
